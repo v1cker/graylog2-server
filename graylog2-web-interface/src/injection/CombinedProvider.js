@@ -148,10 +148,12 @@ class CombinedProvider {
   get(name) {
     const result = {};
     if (this.stores[name]) {
-      result[`${name}Store`] = this.stores[name]();
+      const store = this.stores[name]();
+      result[`${name}Store`] = store && store.default ? store.default : store;
     }
     if (this.actions[name]) {
-      result[`${name}Actions`] = this.actions[name]();
+      const actions = this.actions[name]();
+      result[`${name}Actions`] = actions && actions.default ? actions.default : actions;
     }
     return result;
   }

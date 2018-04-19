@@ -1,9 +1,9 @@
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import LoginPage from 'react-proxy?name=LoginPage!pages/LoginPage';
-import LoadingPage from 'react-proxy?name=LoadingPage!pages/LoadingPage';
-import LoggedInPage from 'react-proxy?name=LoggedInPage!pages/LoggedInPage';
+import LoginPage from 'pages/LoginPage';
+import LoadingPage from 'pages/LoadingPage';
+import LoggedInPage from 'pages/LoggedInPage';
 import ServerUnavailablePage from 'pages/ServerUnavailablePage';
 
 import StoreProvider from 'injection/StoreProvider';

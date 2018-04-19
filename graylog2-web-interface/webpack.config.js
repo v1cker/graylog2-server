@@ -3,6 +3,7 @@ const webpack = require('webpack');
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const merge = require('webpack-merge');
+const FixDefaultImportPlugin = require('webpack-fix-default-import-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 
@@ -38,9 +39,8 @@ const webpackConfig = {
   },
   module: {
     rules: [
-      { test: /pages\/.+\.jsx$/, use: 'react-proxy-loader', exclude: /node_modules|\.node_cache|ServerUnavailablePage/ },
       { test: /\.js(x)?$/, use: BABELLOADER, exclude: /node_modules|\.node_cache/ },
-      { test: /\.ts$/, use: [BABELLOADER, { loader: 'ts-loader' }], exclude: /node_modules|\.node_cache/ },
+      { test: /\.ts$/, use: [{ loader: 'ts-loader' }], exclude: /node_modules|\.node_cache/ },
       { test: /\.(woff(2)?|svg|eot|ttf|gif|jpg)(\?.+)?$/, use: 'file-loader' },
       { test: /\.png$/, use: 'url-loader' },
       {
@@ -68,6 +68,7 @@ const webpackConfig = {
   resolveLoader: { modules: [path.join(ROOT_PATH, 'node_modules')], moduleExtensions: ['-loader'] },
   devtool: 'source-map',
   plugins: [
+    new FixDefaultImportPlugin(),
     new webpack.DllReferencePlugin({ manifest: VENDOR_MANIFEST_PATH, context: ROOT_PATH }),
     new HtmlWebpackPlugin({
       title: 'Graylog',
