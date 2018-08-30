@@ -16,6 +16,10 @@
  */
 package org.graylog2.indexer.indices;
 
+import static java.util.stream.Collectors.toList;
+import static org.elasticsearch.search.builder.SearchSourceBuilder.searchSource;
+import static org.graylog2.audit.AuditEventTypes.ES_INDEX_CREATE;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,6 +29,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
+import com.google.common.collect.Maps;
 import com.google.common.eventbus.EventBus;
 import com.google.common.primitives.Ints;
 import io.searchbox.client.JestClient;
@@ -60,6 +65,22 @@ import io.searchbox.indices.template.DeleteTemplate;
 import io.searchbox.indices.template.PutTemplate;
 import io.searchbox.params.Parameters;
 import io.searchbox.params.SearchType;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import javax.validation.constraints.NotNull;
 import org.apache.http.client.config.RequestConfig;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
@@ -88,27 +109,6 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import javax.validation.constraints.NotNull;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import static java.util.stream.Collectors.toList;
-import static org.elasticsearch.search.builder.SearchSourceBuilder.searchSource;
-import static org.graylog2.audit.AuditEventTypes.ES_INDEX_CREATE;
 
 @Singleton
 public class Indices {
@@ -593,6 +593,26 @@ public class Indices {
         }
 
         return result.build();
+    }
+
+    public IndexSettings getIndexSettings(IndexSet indexSet) {
+        return new IndexSettings(getIndicesSettingsRaw(indexSet));
+    }
+
+    public Map<String, JsonNode> getIndicesSettingsRaw(IndexSet indexSet) {
+        return getIndicesSettingsRaw(Collections.singleton(indexSet.getIndexWildcard()));
+    }
+
+    public Map<String, JsonNode> getIndicesSettingsRaw(final Collection<String> indices) {
+        final GetSettings getSettings = new GetSettings.Builder().addIndex(indices).build();
+        final JestResult jestResult = JestUtils
+            .execute(jestClient, getSettings, () -> "Couldn't get index settings from " + indices);
+        final JsonNode jsonObject = jestResult.getJsonObject();
+        if (!jsonObject.isObject()) {
+            LOG.warn("Unexpected response format for index settings: {}. Cannot get index settings.", jsonObject);
+            return Collections.emptyMap();
+        }
+        return Maps.toMap(jsonObject.fieldNames(), jsonObject::get);
     }
 
     public void cycleAlias(String aliasName, String targetIndex) {
