@@ -596,15 +596,22 @@ public class Indices {
     }
 
     public IndexSettings getIndexSettings(IndexSet indexSet) {
-        return new IndexSettings(getIndicesSettingsRaw(indexSet));
+        return getIndexSettings(Collections.singleton(indexSet.getIndexWildcard()));
     }
 
-    public Map<String, JsonNode> getIndicesSettingsRaw(IndexSet indexSet) {
-        return getIndicesSettingsRaw(Collections.singleton(indexSet.getIndexWildcard()));
+    public IndexSettings getIndexSettings(String index) {
+        return getIndexSettings(Collections.singleton(index));
+    }
+
+    public IndexSettings getIndexSettings(Collection<String> indices) {
+        return new IndexSettings(getIndicesSettingsRaw(indices));
     }
 
     public Map<String, JsonNode> getIndicesSettingsRaw(final Collection<String> indices) {
-        final GetSettings getSettings = new GetSettings.Builder().addIndex(indices).build();
+        final GetSettings getSettings = new GetSettings.Builder()
+            .addIndex(indices)
+            .ignoreUnavailable(true)
+            .build();
         final JestResult jestResult = JestUtils
             .execute(jestClient, getSettings, () -> "Couldn't get index settings from " + indices);
         final JsonNode jsonObject = jestResult.getJsonObject();
@@ -665,17 +672,15 @@ public class Indices {
         return Health.Status.valueOf(status.toUpperCase(Locale.ENGLISH));
     }
 
+    /**
+     *
+     * @param index
+     * @deprecated retrieve the index settings via {@link #getIndexSettings(IndexSet)} and operate on them
+     * @return
+     */
+    @Deprecated
     public Optional<DateTime> indexCreationDate(String index) {
-        final GetSettings request = new GetSettings.Builder()
-                .addIndex(index)
-                .ignoreUnavailable(true)
-                .build();
-        final JestResult jestResult = JestUtils.execute(jestClient, request, () -> "Couldn't read settings of index " + index);
-
-        return Optional.of(jestResult.getJsonObject().path(index).path("settings").path("index").path("creation_date"))
-                .filter(JsonNode::isValueNode)
-                .map(JsonNode::asLong)
-                .map(creationDate -> new DateTime(creationDate, DateTimeZone.UTC));
+        return getIndexSettings(index).indexCreationDate(index);
     }
 
     /**

@@ -16,11 +16,16 @@
  */
 package org.graylog2.indexer.indices;
 
+import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
+import java.util.Optional;
 import org.elasticsearch.Version;
 import org.graylog2.indexer.IndexSet;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,12 +34,17 @@ import org.slf4j.LoggerFactory;
  * exists to avoid spreading knowledge about the internal structure and source of the data structure.
  */
 public class IndexSettings {
+
   private static final Logger LOG = LoggerFactory.getLogger(IndexSettings.class);
+  private static final JsonPointer SETTINGS_INDEX_VERSION_CREATED_PTR =
+      JsonPointer.valueOf("/settings/index/version/created");
+  private static final JsonPointer SETTINGS_INDEX_CREATION_DATE_PTR =
+      JsonPointer.valueOf("/settings/index/creation_date");
 
   private final Map<String, JsonNode> indicesSettings;
 
   /**
-   * For use with {@link Indices#getIndicesSettingsRaw(IndexSet)}.
+   * For use with {@link Indices#getIndexSettings(IndexSet)} (IndexSet)}.
    * @param indicesSettings the per-index name settings objects
    */
   public IndexSettings(Map<String, JsonNode> indicesSettings) {
@@ -50,7 +60,7 @@ public class IndexSettings {
     ImmutableMap.Builder<String, JsonNode> builder = ImmutableMap.builder();
 
     indicesSettings.forEach((indexName, settingsJsonNode) -> {
-      final JsonNode createdNode = settingsJsonNode.at("/settings/index/version/created");
+      final JsonNode createdNode = settingsJsonNode.at(SETTINGS_INDEX_VERSION_CREATED_PTR);
       if (createdNode.isValueNode()) {
         final Version version = Version.fromId(createdNode.asInt());
         if (version.before(elasticsearchVersion)) {
@@ -63,5 +73,12 @@ public class IndexSettings {
     return builder.build();
   }
 
+  public Optional<DateTime> indexCreationDate(String indexName) {
+    final JsonNode jsonNode = indicesSettings.getOrDefault(indexName, MissingNode.getInstance());
+    return Optional.of(jsonNode.path(indexName).at(SETTINGS_INDEX_CREATION_DATE_PTR))
+        .filter(JsonNode::isValueNode)
+        .map(JsonNode::asLong)
+        .map(creationDate -> new DateTime(creationDate, DateTimeZone.UTC));
+  }
 
 }
